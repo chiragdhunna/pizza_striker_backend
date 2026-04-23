@@ -28,11 +28,21 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
+def _get_database_url() -> str:
+    """Return DATABASE_URL from the environment, raising clearly if unset."""
+    url = os.getenv("DATABASE_URL")
+    if not url:
+        raise RuntimeError(
+            "DATABASE_URL environment variable is not set. "
+            "Copy .env.example to .env and fill in your credentials."
+        )
+    return url
+
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""
-    url = os.getenv("DATABASE_URL")
     context.configure(
-        url=url,
+        url=_get_database_url(),
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -51,7 +61,7 @@ def do_run_migrations(connection):
 async def run_migrations_online() -> None:
     """Run migrations in 'online' mode using async engine."""
     configuration = config.get_section(config.config_ini_section, {})
-    configuration["sqlalchemy.url"] = os.getenv("DATABASE_URL")
+    configuration["sqlalchemy.url"] = _get_database_url()
 
     connectable = async_engine_from_config(
         configuration,
