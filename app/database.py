@@ -39,7 +39,14 @@ async def get_db():
 
 
 async def init_db():
-    """Initialize database (create all tables)."""
+    """Initialize database (create all tables).
+
+    Imports all models so that Base.metadata is fully populated before
+    calling create_all.  Intended for local development / testing only —
+    production schema management is handled by Alembic migrations.
+    """
+    import app.models  # noqa: F401 — registers all ORM models on Base.metadata
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 

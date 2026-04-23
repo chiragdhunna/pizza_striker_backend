@@ -1,5 +1,5 @@
 from typing import Any, Optional, TypeVar, Generic
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 T = TypeVar("T")
 
@@ -7,15 +7,12 @@ T = TypeVar("T")
 class APIResponse(BaseModel, Generic[T]):
     """Standard API response wrapper for all endpoints."""
 
+    model_config = ConfigDict()
+
     success: bool
     message: str
     data: Optional[T] = None
     error_code: Optional[str] = None
-
-    class Config:
-        json_encoders = {
-            # Handle datetime serialization if needed
-        }
 
 
 def success_response(

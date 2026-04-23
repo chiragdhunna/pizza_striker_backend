@@ -1,22 +1,23 @@
 """Alembic environment configuration."""
 
 from logging.config import fileConfig
-from sqlalchemy import engine_from_config
+from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlalchemy import pool
 from alembic import context
+import asyncio
 import os
 import sys
 from dotenv import load_dotenv
 
-# Add app to path
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+# Add project root (parent of alembic/) to sys.path so that `app.*` imports work
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # Load environment variables
 load_dotenv()
 
 # Import models for autogenerate
-from app.models import Base
-from app.database import engine
+from app.models import Base  # noqa: E402
+from app.database import engine  # noqa: E402
 
 config = context.config
 
@@ -41,25 +42,30 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def run_migrations_online() -> None:
-    """Run migrations in 'online' mode."""
-    configuration = config.get_section(config.config_ini_section)
+def do_run_migrations(connection):
+    context.configure(connection=connection, target_metadata=target_metadata)
+    with context.begin_transaction():
+        context.run_migrations()
+
+
+async def run_migrations_online() -> None:
+    """Run migrations in 'online' mode using async engine."""
+    configuration = config.get_section(config.config_ini_section, {})
     configuration["sqlalchemy.url"] = os.getenv("DATABASE_URL")
 
-    connectable = engine_from_config(
+    connectable = async_engine_from_config(
         configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
 
-    with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+    async with connectable.connect() as connection:
+        await connection.run_sync(do_run_migrations)
 
-        with context.begin_transaction():
-            context.run_migrations()
+    await connectable.dispose()
 
 
 if context.is_offline_mode():
     run_migrations_offline()
 else:
-    run_migrations_online()
+    asyncio.run(run_migrations_online())

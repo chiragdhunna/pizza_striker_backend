@@ -1,22 +1,21 @@
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
-from app.database import init_db
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context for app startup and shutdown."""
-    # Startup
-    print("🚀 Starting Pizza Striker Backend...")
-    await init_db()
-    print("✅ Database initialized")
+    # Startup — schema is managed by Alembic migrations.
+    logger.info("Starting Pizza Striker Backend...")
     yield
     # Shutdown
-    print("🛑 Shutting down Pizza Striker Backend...")
+    logger.info("Shutting down Pizza Striker Backend...")
 
 
 # Create FastAPI app

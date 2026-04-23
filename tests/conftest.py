@@ -1,10 +1,22 @@
 """Test configuration and fixtures."""
 
+import os
+
+# Set test environment variables before any app imports so that Settings
+# loads without requiring a real .env file or actual credentials.
+os.environ.setdefault("POSTGRES_HOST", "localhost")
+os.environ.setdefault("POSTGRES_PORT", "5432")
+os.environ.setdefault("POSTGRES_USER", "test_user")
+os.environ.setdefault("POSTGRES_PASSWORD", "test_password")
+os.environ.setdefault("POSTGRES_DB", "test_db")
+os.environ.setdefault("JWT_SECRET_KEY", "test_secret_key_for_testing_only")
+
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
+import app.models  # noqa: F401 — registers all ORM models on Base.metadata
 from app.main import app
 from app.database import Base, get_db
 from app.config import get_settings
@@ -52,7 +64,9 @@ async def test_client(db_session):
 
     app.dependency_overrides[get_db] = override_get_db
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         yield client
 
     app.dependency_overrides.clear()
