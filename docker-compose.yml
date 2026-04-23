@@ -1,0 +1,42 @@
+version: "3.8"
+
+services:
+  # ── PostgreSQL Database Container ──────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: pizza_striker_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pizza_admin
+      POSTGRES_PASSWORD: pizza_secret_123
+      POSTGRES_DB: pizza_striker
+    ports:
+      - "5432:5432" # Exposed so you can connect locally with pgAdmin/psql
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pizza_admin -d pizza_striker"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── FastAPI Backend Container ──────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pizza_striker_app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy # Wait for Postgres to be ready
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload"
+
+volumes:
+  postgres_data: # Named volume for persistent DB storage
